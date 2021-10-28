@@ -1,5 +1,4 @@
 const AllureRuntime = require("allure-js-commons").AllureRuntime;
-const isPromise = require("allure-js-commons").isPromise;
 const Status = require("allure-js-commons").Status;
 const LabelName = require("allure-js-commons").LabelName;
 const Stage = require("allure-js-commons").Allure;
@@ -96,19 +95,19 @@ class AllureReporter {
     }
 
     request(err, args) {
-        if(err)
-           return;
-        const req = args.request;
-        let url = req.url.protocol + "://" + req.url.host.join('.');
-        if(req.url.path !== undefined) {
-            if(req.url.path.length > 0) {
-                url = url + "/" + req.url.path.join('/');
-            }
-        }    
-        const resp_stream = args.response.stream;
-        const resp_body = Buffer.from(resp_stream).toString();
-        this.runningItems[this.runningItems.length - 1].pm_item.request_data = {url:url, method: req.method, body: req.body};
-        this.runningItems[this.runningItems.length - 1].pm_item.response_data = {status: args.response.status, code: args.response.code, body: resp_body};
+        if (err) {
+            this.failTestCase(this.runningItems[this.runningItems.length-1].allure_test, {
+                name: "RequestError",
+                message: `code: ${err.code}, errno: ${err.errno}, syscall: ${err.syscall}`,
+                stack: `${args.request.method} - ${args.request.url}`
+            });
+        }
+        this.runningItems[this.runningItems.length - 1].pm_item.request_data = {url: args.request.url, method: args.request.method, body: args.request.body};
+        if (args.response) {
+            const resp_stream = args.response.stream;
+            const resp_body = Buffer.from(resp_stream).toString();
+            this.runningItems[this.runningItems.length - 1].pm_item.response_data = {status: args.response.status, code: args.response.code, body: resp_body};
+        }
     }
 
     startStep(name) {
@@ -299,15 +298,20 @@ class AllureReporter {
     }
 
     passTestCase(allure_test) {
+        const latestStatus = allure_test.status;
+        // if test already has a failed state, we should not overwrite it
+        if (latestStatus === Status.FAILED || latestStatus === Status.BROKEN) {
+            return;
+        }
         this.endTest(allure_test, Status.PASSED);
     }
 
     failTestCase(allure_test, error) {
-          const latestStatus = allure_test.status;
-          // if test already has a failed state, we should not overwrite it
-          if (latestStatus === Status.FAILED || latestStatus === Status.BROKEN) {
+        const latestStatus = allure_test.status;
+        // if test already has a failed state, we should not overwrite it
+        if (latestStatus === Status.FAILED || latestStatus === Status.BROKEN) {
             return;
-          }
+        }
         const status = error.name === "AssertionError" ? Status.FAILED : Status.BROKEN;
         this.endTest(allure_test, status, { message: error.message, trace: error.stack });
     }
@@ -324,19 +328,18 @@ class AllureReporter {
             this.attachConsoleLogs(rItem.pm_item.console_logs);
         }
         let requestDataURL = 'No request';
+        let bodyModeProp = '';
         let bodyModePropObj = '';
         if (rItem.pm_item.request_data) {
             requestDataURL = rItem.pm_item.request_data.method + " - " + rItem.pm_item.request_data.url;
-        let bodyModeProp = '';
-
-        if(rItem.pm_item.request_data.body !== undefined){
-            bodyModeProp = rItem.pm_item.request_data.body.mode;
-        }
-        if(bodyModeProp === "raw")
-        {
-            // bodyModePropObj = this.escape(rItem.pm_item.request_data.body[bodyModeProp]);
-            bodyModePropObj = rItem.pm_item.request_data.body[bodyModeProp];
-            console.log(bodyModePropObj);
+            if(rItem.pm_item.request_data.body !== undefined){
+                bodyModeProp = rItem.pm_item.request_data.body.mode;
+            }
+            if(bodyModeProp === "raw")
+            {
+                // bodyModePropObj = this.escape(rItem.pm_item.request_data.body[bodyModeProp]);
+                bodyModePropObj = rItem.pm_item.request_data.body[bodyModeProp];
+                console.log(bodyModePropObj);
             }
         }
 
@@ -366,7 +369,7 @@ class AllureReporter {
             this.failTestCase(rItem.allure_test, {
                 name: "AssertionError",
                 message: msg,
-                trace: details,
+                stack: details,
             });
 
         } else {

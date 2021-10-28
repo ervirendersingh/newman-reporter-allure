@@ -1,0 +1,375 @@
+{
+	"info": {
+		"_postman_id": "64e49447-b969-4365-8819-0b4f4d19671c",
+		"name": "Sample Postman Collection",
+		"description": "A sample collection to demonstrate collections as a set of related requests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "ParentSuite",
+			"item": [
+				{
+					"name": "SubSuite",
+					"item": [
+						{
+							"name": "A simple GET request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('expect response be 200', function () {",
+											"    pm.response.to.be.ok",
+											"})",
+											"pm.test('expect response json contain args', function () {",
+											"    pm.expect(pm.response.json().args).to.have.property('source')",
+											"      .and.equal('newman-sample-github-collection')",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"console.log(postman.getEnvironmentVariable(\"random\"));",
+											"if(postman.getEnvironmentVariable(\"random\") == null) {",
+											"    postman.setEnvironmentVariable(\"random\", 1);",
+											"    console.log(\"setting random variable\");",
+											"}",
+											"    "
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "https://postman-echo.com/get?source=newman-sample-github-collection",
+									"protocol": "https",
+									"host": [
+										"postman-echo",
+										"com"
+									],
+									"path": [
+										"get"
+									],
+									"query": [
+										{
+											"key": "source",
+											"value": "newman-sample-github-collection"
+										}
+									]
+								},
+								"description": "Request to get the URL for Newman Sample Github Collection"
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "PostRequests",
+			"item": [
+				{
+					"name": "A simple POST request",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"var condition = true;",
+									"",
+									"let rnd = postman.getEnvironmentVariable(\"random\");",
+									"rnd = parseInt(rnd) + 1;",
+									"",
+									"postman.setEnvironmentVariable(\"random\", rnd);",
+									"",
+									"console.log(rnd);",
+									"",
+									"if(condition) {",
+									"//   postman.setEnvironmentVariable(\"random\", \"this is a random variable\");",
+									"} ",
+									"",
+									"console.log(\"Done pre-request\");"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"",
+									"",
+									"let tc = postman.getEnvironmentVariable(\"random\");",
+									"console.log(parseInt(tc))",
+									"if(parseInt(tc) < 4)",
+									"{",
+									"    postman.setNextRequest('A simple GET request');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/plain"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "Duis posuere augue vel cursus pharetra. In luctus a ex nec pretium..."
+						},
+						"url": {
+							"raw": "https://postman-echo.com/post",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"post"
+							]
+						},
+						"description": "Posting Raw data to post endpoint"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "PostWithBody",
+			"item": [
+				{
+					"name": "A simple POST request with JSON body",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"text\":\"Duis posuere augue vel cursus pharetra. In luctus a ex nec pretium...\"}"
+						},
+						"url": {
+							"raw": "https://postman-echo.com/post",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"post"
+							]
+						},
+						"description": "Posting text data to post endpoint"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Errors",
+			"item": [
+				{
+					"name": "ENOTFOUND",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.000/",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"000"
+							],
+							"path": [
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ECONNREFUSED",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://localhost:16001/",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "16001",
+							"path": [
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "EPROTO",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com:80/",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"port": "80",
+							"path": [
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ECONNRESET",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://google.com:443/",
+							"protocol": "http",
+							"host": [
+								"google",
+								"com"
+							],
+							"port": "443",
+							"path": [
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Expected 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com/status/404",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"status",
+								"404"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unexpected 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com/404",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"404"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
