@@ -4,7 +4,11 @@
   "description": "newman reporter for Allure",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "begin-test": "rm -rf ./allure-results && mkdir -p ./node_modules/newman-reporter-allure && cp -t ./node_modules/newman-reporter-allure package.json index.js",
+    "do-test": "newman run sample2.json --reporters=allure",
+    "end-test": "rm -rf ./node_modules/newman-reporter-allure",
+    "show-report": "allure serve ./allure-results",
+    "test": "npm run begin-test && npm run do-test ; npm run end-test && npm run show-report"
   },
   "keywords": [
     "allure",
@@ -24,5 +28,9 @@
   "dependencies": {
     "allure-js-commons": "^2.0.0-beta.6",
     "lodash": "^4.17.15"
+  },
+  "devDependencies": {
+    "allure-commandline": "^2.13.8",
+    "newman": "^5.3.0"
   }
 }

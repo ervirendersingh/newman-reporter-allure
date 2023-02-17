@@ -1,5 +1,4 @@
 const AllureRuntime = require("allure-js-commons").AllureRuntime;
-const isPromise = require("allure-js-commons").isPromise;
 const Status = require("allure-js-commons").Status;
 const LabelName = require("allure-js-commons").LabelName;
 const Stage = require("allure-js-commons").Allure;
@@ -96,19 +95,19 @@ class AllureReporter {
     }
 
     request(err, args) {
-        if(err)
-           return;
-        const req = args.request;
-        let url = req.url.protocol + "://" + req.url.host.join('.');
-        if(req.url.path !== undefined) {
-            if(req.url.path.length > 0) {
-                url = url + "/" + req.url.path.join('/');
-            }
-        }    
-        const resp_stream = args.response.stream;
-        const resp_body = Buffer.from(resp_stream).toString();
-        this.runningItems[this.runningItems.length - 1].pm_item.request_data = {url:url, method: req.method, body: req.body};
-        this.runningItems[this.runningItems.length - 1].pm_item.response_data = {status: args.response.status, code: args.response.code, body: resp_body};
+        if (err) {
+            this.failTestCase(this.runningItems[this.runningItems.length-1].allure_test, {
+                name: "RequestError",
+                message: `code: ${err.code}, errno: ${err.errno}, syscall: ${err.syscall}`,
+                stack: `${args.request.method} - ${args.request.url}`
+            });
+        }
+        this.runningItems[this.runningItems.length - 1].pm_item.request_data = {url: args.request.url, method: args.request.method, body: args.request.body};
+        if (args.response) {
+            const resp_stream = args.response.stream;
+            const resp_body = Buffer.from(resp_stream).toString();
+            this.runningItems[this.runningItems.length - 1].pm_item.response_data = {status: args.response.status, code: args.response.code, body: resp_body};
+        }
     }
 
     startStep(name) {
@@ -299,15 +298,20 @@ class AllureReporter {
     }
 
     passTestCase(allure_test) {
+        const latestStatus = allure_test.status;
+        // if test already has a failed state, we should not overwrite it
+        if (latestStatus === Status.FAILED || latestStatus === Status.BROKEN) {
+            return;
+        }
         this.endTest(allure_test, Status.PASSED);
     }
 
     failTestCase(allure_test, error) {
-          const latestStatus = allure_test.status;
-          // if test already has a failed state, we should not overwrite it
-          if (latestStatus === Status.FAILED || latestStatus === Status.BROKEN) {
+        const latestStatus = allure_test.status;
+        // if test already has a failed state, we should not overwrite it
+        if (latestStatus === Status.FAILED || latestStatus === Status.BROKEN) {
             return;
-          }
+        }
         const status = error.name === "AssertionError" ? Status.FAILED : Status.BROKEN;
         this.endTest(allure_test, status, { message: error.message, trace: error.stack });
     }
@@ -323,27 +327,32 @@ class AllureReporter {
         if(rItem.pm_item.console_logs.length > 0){
             this.attachConsoleLogs(rItem.pm_item.console_logs);
         }
-        const requestDataURL = rItem.pm_item.request_data.method + " - " + rItem.pm_item.request_data.url;
+        let requestDataURL = 'No request';
         let bodyModeProp = '';
-        let bodyModePropObj;
-
-        if(rItem.pm_item.request_data.body !== undefined){
-            bodyModeProp = rItem.pm_item.request_data.body.mode;
-        }
-        if(bodyModeProp === "raw")
-        {
-            // bodyModePropObj = this.escape(rItem.pm_item.request_data.body[bodyModeProp]);
-            bodyModePropObj = rItem.pm_item.request_data.body[bodyModeProp];
-            console.log(bodyModePropObj);
-        } else {
-            bodyModePropObj = ""
+        let bodyModePropObj = '';
+        if (rItem.pm_item.request_data) {
+            requestDataURL = rItem.pm_item.request_data.method + " - " + rItem.pm_item.request_data.url;
+            if(rItem.pm_item.request_data.body !== undefined){
+                bodyModeProp = rItem.pm_item.request_data.body.mode;
+            }
+            if(bodyModeProp === "raw")
+            {
+                // bodyModePropObj = this.escape(rItem.pm_item.request_data.body[bodyModeProp]);
+                bodyModePropObj = rItem.pm_item.request_data.body[bodyModeProp];
+                console.log(bodyModePropObj);
+            }
         }
 
         const reqTableStr = ` <table> <tr> <th style="border: 1px solid #dddddd;text-align: left;padding: 8px;color:Orange;"> ${bodyModeProp} </th> <td style="border: 1px solid #dddddd;text-align: left;padding: 8px;"> <pre style="color:Orange"> <b> ${bodyModePropObj} </b> </pre> </td> </tr>  </table>`;
 
-        const responseCodeStatus= rItem.pm_item.response_data.code + " - " + rItem.pm_item.response_data.status;
+        let responseCodeStatus = 'No response';
+        let responseDataBody = '';
+        if (rItem.pm_item.response_data) {
+            responseCodeStatus = rItem.pm_item.response_data.code + " - " + rItem.pm_item.response_data.status;
+            responseDataBody = rItem.pm_item.response_data.body;
+        }
 
-        var testDescription;
+        let testDescription;
         if(args.item.request.description !== undefined){
             testDescription = args.item.request.description.content;
             testDescription = testDescription.replace(/[*]/g,"");
@@ -352,16 +361,15 @@ class AllureReporter {
             testDescription = '';
         }
 
-       
-        this.setDescriptionHtml(`<p style="color:MediumPurple;"> <b> ${testDescription} </b> </p> <h4 style="color:DodgerBlue;"><b><i>Request:</i></b></h4> <p style="color:DodgerBlue"> <b> ${requestDataURL} </b> </p> ${reqTableStr} </p> <h4 style="color:DodgerBlue;"> <b> <i> Response: </i> </b> </h4> <p style="color:DodgerBlue"> <b> ${responseCodeStatus} </b> </p> <p > <pre style="color:Orange;"> <b> ${rItem.pm_item.response_data.body} </b> </pre> </p>`);
+        this.setDescriptionHtml(`<p style="color:MediumPurple;"> <b> ${testDescription} </b> </p> <h4 style="color:DodgerBlue;"><b><i>Request:</i></b></h4> <p style="color:DodgerBlue"> <b> ${requestDataURL} </b> </p> ${reqTableStr} </p> <h4 style="color:DodgerBlue;"> <b> <i> Response: </i> </b> </h4> <p style="color:DodgerBlue"> <b> ${responseCodeStatus} </b> </p> <p > <pre style="color:Orange;"> <b> ${responseDataBody} </b> </pre> </p>`);
         if (rItem.pm_item.failedAssertions.length > 0 ) {
             const msg = this.escape(rItem.pm_item.failedAssertions.join(", "));
-            const details = this.escape(`Response code: ${rItem.pm_item.response_data.code}, status: ${rItem.pm_item.response_data.status}`);
+            const details = this.escape(responseCodeStatus);
             
             this.failTestCase(rItem.allure_test, {
                 name: "AssertionError",
                 message: msg,
-                trace: details,
+                stack: details,
             });
 
         } else {
